@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>蜗牛AI · AI应用分享会 互动问答</title>
+<style>
+:root{
+  --bg-cream:#FFF8F2;--bg-warm:#FFF5EB;--card-white:#FFFFFF;
+  --text-primary:#2D2B32;--text-secondary:#6B6678;--text-muted:#9E99AA;
+  --accent-pink:#FF8FAB;--accent-mint:#6EE7B7;--accent-sky:#7DD3FC;
+  --accent-lavender:#C4B5FD;--accent-peach:#FCA5A5;--accent-yellow:#FDE68A;
+  --accent-coral:#FDA4AF;--green:#34D399;--red:#FB7185;
+  --radius:24px;--radius-sm:16px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;font-family:var(--font);background:var(--bg-cream);color:var(--text-primary)}
+.app{display:flex;flex-direction:column;height:100%;width:100%}
+
+.brand-bar{display:flex;align-items:center;justify-content:center;padding:10px 16px;background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);border-bottom:1px solid rgba(0,0,0,0.04);z-index:200;flex-shrink:0}
+.brand-bar .brand-logo{height:36px;width:auto}
+
+.screen{display:none;flex-direction:column;flex:1;width:100%;overflow-y:auto}
+.screen.active{display:flex;align-items:stretch}
+
+.start-screen,.result-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;min-height:100%;width:100%}
+.start-card,.result-card{max-width:420px;width:100%;margin:0 auto;background:var(--card-white);border-radius:var(--radius);padding:32px 24px;box-shadow:0 2px 16px rgba(0,0,0,0.06)}
+
+.start-card h1{font-size:22px;margin-bottom:8px;color:var(--text-primary)}
+.start-card .subtitle{font-size:14px;color:var(--text-secondary);margin-bottom:24px;line-height:1.6}
+.start-card .info-row{display:flex;gap:12px;margin-bottom:20px}
+.start-card .info-item{flex:1;background:var(--bg-warm);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--text-secondary)}
+.start-card .info-item span{display:block;font-size:20px;font-weight:700;color:var(--text-primary);margin-bottom:2px}
+.btn-primary{display:block;width:100%;padding:14px;border:none;border-radius:var(--radius-sm);font-size:16px;font-weight:600;cursor:pointer;transition:transform 0.15s;background:linear-gradient(135deg,var(--accent-pink),#FF6B8A);color:#fff}
+.btn-primary:active{transform:scale(0.97)}
+
+.quiz-screen{display:flex;flex-direction:column;width:100%;min-height:100%}
+.progress-bar-wrap{padding:0 16px;margin-top:12px;flex-shrink:0}
+.progress-bar{height:6px;background:var(--bg-warm);border-radius:3px;overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent-pink),var(--accent-mint));border-radius:3px;transition:width 0.4s}
+.progress-info{display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:6px;padding:0 16px}
+
+.question-area{flex:1;display:flex;flex-direction:column;padding:16px 16px 0;overflow-y:auto}
+.module-badge{display:inline-block;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:8px}
+.badge-m1{background:#FFE4EC;color:#D6336C}
+.badge-m2{background:#E6FFE6;color:#2D8B57}
+.badge-m3{background:#E6F2FF;color:#2563EB}
+.badge-m4{background:#F0E6FF;color:#7C3AED}
+.badge-m5{background:#FFEEE6;color:#C2410C}
+.question-card{background:var(--card-white);border-radius:var(--radius);padding:24px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,0.05)}
+.contact-chip{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.contact-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
+.contact-name{font-size:13px;color:var(--text-secondary)}
+.question-text{font-size:16px;font-weight:600;line-height:1.6;color:var(--text-primary);margin-bottom:16px}
+
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.option-btn{padding:14px 12px;border:2px solid transparent;border-radius:var(--radius-sm);font-size:14px;cursor:pointer;transition:all 0.2s;background:var(--bg-warm);color:var(--text-primary);line-height:1.5;text-align:left}
+.option-btn:hover{border-color:var(--accent-pink)}
+.option-btn.selected{border-color:var(--accent-pink);background:#FFE4EC}
+.option-btn.correct{border-color:var(--green);background:#E6FFE6;color:#2D8B57}
+.option-btn.wrong{border-color:var(--red);background:#FFE8E8;color:#D6336C}
+.option-btn.disabled{pointer-events:none;opacity:0.7}
+
+.explanation-card{background:linear-gradient(135deg,#FFF5EB,#FFF8F2);border-radius:var(--radius-sm);padding:16px;margin-top:12px;display:none}
+.explanation-card.show{display:block}
+.explanation-card .label{font-size:12px;font-weight:600;color:var(--accent-pink);margin-bottom:6px}
+.explanation-card .content{font-size:14px;color:var(--text-secondary);line-height:1.6}
+.explanation-card .knowledge-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:12px;background:var(--accent-lavender);color:#5B21B6;margin-top:8px}
+
+.next-btn-wrap{padding:12px 16px;flex-shrink:0}
+.btn-next{display:block;width:100%;padding:14px;border:none;border-radius:var(--radius-sm);font-size:16px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,var(--accent-mint),#34D399);color:#fff;transition:transform 0.15s}
+.btn-next:active{transform:scale(0.97)}
+.btn-next:disabled{opacity:0.4;pointer-events:none}
+
+.result-card h2{font-size:20px;margin-bottom:8px}
+.result-score{font-size:48px;font-weight:800;color:var(--accent-pink);margin:12px 0}
+.result-detail{font-size:14px;color:var(--text-secondary);margin-bottom:24px;line-height:1.6}
+.result-stats{display:flex;gap:12px;margin-bottom:24px}
+.result-stat{flex:1;background:var(--bg-warm);border-radius:var(--radius-sm);padding:12px;text-align:center}
+.result-stat .num{font-size:20px;font-weight:700}
+.result-stat .num.green{color:var(--green)}
+.result-stat .num.red{color:var(--red)}
+.result-stat .lbl{font-size:12px;color:var(--text-muted)}
+.btn-retry{display:block;width:100%;padding:14px;border:none;border-radius:var(--radius-sm);font-size:16px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,var(--accent-pink),#FF6B8A);color:#fff;transition:transform 0.15s}
+.btn-retry:active{transform:scale(0.97)}
+
+.snail-bg-1{background:linear-gradient(135deg,#FFF0F5,#FFE4EC)}
+.snail-bg-2{background:linear-gradient(135deg,#F0FFF4,#E6FFE6)}
+.snail-bg-3{background:linear-gradient(135deg,#F0F8FF,#E6F2FF)}
+.snail-bg-4{background:linear-gradient(135deg,#F8F0FF,#F0E6FF)}
+.snail-bg-5{background:linear-gradient(135deg,#FFF5F0,#FFEEE6)}
+.snail-bg-6{background:linear-gradient(135deg,#FFFCF0,#FFF8E6)}
+.snail-bg-7{background:linear-gradient(135deg,#FFF0F0,#FFE8E8)}
+.snail-bg-8{background:linear-gradient(135deg,#F0FFF5,#E6FFEE)}
+.snail-bg-9{background:linear-gradient(135deg,#F8F0FF,#F3E8FF)}
+.snail-bg-10{background:linear-gradient(135deg,#FFF0F5,#FFE8F0)}
+.snail-bg-11{background:linear-gradient(135deg,#F0FFFF,#E6FAFA)}
+.snail-bg-12{background:linear-gradient(135deg,#FFFDF5,#FFF8EE)}
+.snail-bg-13{background:linear-gradient(135deg,#FFF0F3,#FFEAEF)}
+.snail-bg-14{background:linear-gradient(135deg,#FFFCF0,#FFF5E6)}
+.snail-bg-15{background:linear-gradient(135deg,#F8F0FF,#F5EAFF)}
+
+@media(max-width:480px){
+  .brand-bar .brand-logo{height:28px}
+  .start-card,.result-card{padding:24px 16px}
+  .options-grid{grid-template-columns:1fr}
+  .question-card{padding:18px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="brand-bar" id="brandBar">
+    <img src="logo.png" alt="蜗牛AI Snail AI" class="brand-logo">
+  </div>
+
+  <!-- START SCREEN -->
+  <div class="screen active" id="startScreen">
+    <div class="start-screen">
+      <div class="start-card">
+        <h1>蜗牛AI 互动问答</h1>
+        <div class="subtitle">AI应用分享会 · 2026年6月20日<br>回顾今天的精彩内容，测试你的AI知识</div>
+        <div class="info-row">
+          <div class="info-item"><span>15</span>道题目</div>
+          <div class="info-item"><span>5</span>个模块</div>
+          <div class="info-item"><span>即时</span>解析</div>
+        </div>
+        <button class="btn-primary" onclick="startQuiz()">开始答题</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUIZ SCREEN -->
+  <div class="screen" id="quizScreen">
+    <div class="quiz-screen" id="quizArea"></div>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div class="screen" id="resultScreen">
+    <div class="result-screen">
+      <div class="result-card" id="resultCard"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== DATA ==========
+const modules = [
+  {
+    id:1, title:'AI入门与个人故事', subtitle:'从好奇到深入', icon:'🧠', badgeClass:'badge-m1',
+    questions:[
+      {
+        id:1,
+        contact:{name:'Carter Peng',initial:'C',role:'签到嘉宾',color:'#7DD3FC'},
+        text:'Robin是从哪一天开始深度使用AI的？',
+        correctText:'2025年1月1日',
+        distractors:['2023年1月1日','2024年12月31日','2022年6月1日'],
+        explanation:'Robin在分享中提到，他是从2025年1月1日开始深度进入使用和应用AI的，到分享当天刚好半年时间。他是在看完罗振宇跨年演讲后决定深入AI的。',
+        knowledge:'AI入门时间'
+      },
+      {
+        id:2,
+        contact:{name:'Sophia',initial:'S',role:'签到嘉宾',color:'#C4B5FD'},
+        text:'罗振宇2025年跨年演讲的核心主题是什么？',
+        correctText:'全部围绕AI展开',
+        distractors:['中国经济转型','全球化趋势','教育改革'],
+        explanation:'Robin提到罗振宇今年的跨年演讲，从第一秒钟到最后一分钟，讲的都是AI的东西。Robin全程看完4小时后，决定深入AI领域。',
+        knowledge:'跨年演讲主题'
+      },
+      {
+        id:3,
+        contact:{name:'Julia',initial:'J',role:'签到嘉宾',color:'#FF8FAB'},
+        text:'Robin认为AI能力是一种什么样的能力？',
+        correctText:'一种思维，是进化来的不是学来的',
+        distractors:['一种技术技能需要编程基础','一种需要专业培训才能掌握的工具','一种只有年轻人才能掌握的能力'],
+        explanation:'Robin强调AI能力不是学来的，而是一种进化来的思维。就像你今天听了分享后，AI能力可能就开始进化发芽了。',
+        knowledge:'AI能力本质'
+      }
+    ]
+  },
+  {
+    id:2, title:'谷歌全家桶与AI浏览器', subtitle:'最简单的AI入门', icon:'🔧', badgeClass:'badge-m2',
+    questions:[
+      {
+        id:4,
+        contact:{name:'Steven Wei',initial:'S',role:'签到嘉宾',color:'#6EE7B7'},
+        text:'Gmail中嵌入的AI工具主要可以帮助澳洲华人做什么？',
+        correctText:'阅读和起草英文邮件',
+        distractors:['自动翻译中文网页','管理社交媒体账号','在线视频会议翻译'],
+        explanation:'Gmail中有一个嵌入式的AI工具，可以帮助澳洲华人阅读英文邮件内容、起草英文回复邮件，极大降低了英语沟通的门槛。',
+        knowledge:'Gmail AI功能'
+      },
+      {
+        id:5,
+        contact:{name:'Shirley',initial:'S',role:'签到嘉宾',color:'#FDA4AF'},
+        text:'Google NotebookLM在法律合同审查中有什么优势？',
+        correctText:'逐条逐句逐字的细致法律审查',
+        distractors:['只能做概况性总结','仅提供翻译服务','只检查格式问题'],
+        explanation:'Robin为NotebookLM定义了严格的法律专家角色，要求它逐条逐句逐字审查合同，不允许只做概况性总结，不允许跳过任何条款。甚至连标点符号的问题都能检测出来。',
+        knowledge:'NotebookLM法律'
+      },
+      {
+        id:6,
+        contact:{name:'Danielle',initial:'D',role:'签到嘉宾',color:'#7DD3FC'},
+        text:'ChatGPT浏览器可以帮助做什么？',
+        correctText:'快速阅读英文网页并回答产品相关问题',
+        distractors:['只能翻译网页','只能搜索图片','只能下载文件'],
+        explanation:'ChatGPT浏览器可以快速阅读网页内容，帮你查看退货政策、产品续航时间等信息，AI看网页的速度是人的100-200倍。',
+        knowledge:'AI浏览器'
+      }
+    ]
+  },
+  {
+    id:3, title:'腾讯龙虾实战应用', subtitle:'本地AI的全能助手', icon:'🦞', badgeClass:'badge-m3',
+    questions:[
+      {
+        id:7,
+        contact:{name:'Thomas Ye',initial:'T',role:'签到嘉宾',color:'#FDE68A'},
+        text:'腾讯龙虾处理Robin的strata特别 levy涨价问题时，读了多少封邮件？',
+        correctText:'476封',
+        distractors:['76封','276封','47封'],
+        explanation:'Robin让腾讯龙虾去找关于strata涨价的相关邮件，龙虾找到了476封邮件并从中分析出涨价的三大原因，还告知好消息：已经交完了，明年不用再交。',
+        knowledge:'龙虾邮件分析'
+      },
+      {
+        id:8,
+        contact:{name:'Rosa',initial:'R',role:'签到嘉宾',color:'#FCA5A5'},
+        text:'腾讯龙虾在数据安全方面最核心的优势是什么？',
+        correctText:'所有数据在本地运行，不上传到云端',
+        distractors:['数据加密后上传到安全服务器','数据只保存在腾讯的私有云','数据会匿名化处理后上传'],
+        explanation:'腾讯龙虾的核心安全机制：你的所有数据都在本地电脑上，AI只是方法论。龙虾把作战计划发到本地运行，你的隐私资料不会传到云上面。而ChatGPT和豆包是聊天工具，资料会传到云端服务器。',
+        knowledge:'龙虾安全性'
+      },
+      {
+        id:9,
+        contact:{name:'Mandy Chen',initial:'M',role:'签到嘉宾',color:'#C4B5FD'},
+        text:'Robin用腾讯龙虾做健康管理的流程是什么？',
+        correctText:'告诉龙虾医生发了邮件，龙虾自动生成健康分析报告',
+        distractors:['手动输入所有验血数据到龙虾','拍照上传验血报告给ChatGPT','去医院让医生用龙虾分析'],
+        explanation:'Robin只需要告诉龙虾"医生已经把验血报告的email发过来了"，龙虾就会自动去读取邮件并生成详细的健康分析报告，包括异常指标分析、恢复建议和行动计划。',
+        knowledge:'龙虾健康管理'
+      }
+    ]
+  },
+  {
+    id:4, title:'AI投资与股票强度指数', subtitle:'AI时代的投资博弈', icon:'📈', badgeClass:'badge-m4',
+    questions:[
+      {
+        id:10,
+        contact:{name:'David Yao',initial:'D',role:'签到嘉宾',color:'#FF8FAB'},
+        text:'股票强度指数的核心逻辑是什么？',
+        correctText:'过去一年涨得最好的股票强度指数为100，最差的为0',
+        distractors:['根据公司市值大小排名','根据成交量排名','根据分析师推荐排名'],
+        explanation:'股票强度指数的逻辑：过去一年涨得最好的股票强度指数为100，最差的为0。Robin只研究和介入强度指数90以上的股票，即前10%的股票。',
+        knowledge:'强度指数定义'
+      },
+      {
+        id:11,
+        contact:{name:'Felix',initial:'F',role:'签到嘉宾',color:'#6EE7B7'},
+        text:'Robin的股票筛选系统中，毛利率的门槛是多少？',
+        correctText:'40%以上',
+        distractors:['20%以上','60%以上','30%以上'],
+        explanation:'Robin设立了毛利率筛选：只选择毛利率40%以上的公司。低于40%毛利率的公司不研究。毛利率高说明公司盈利能力强。',
+        knowledge:'毛利率筛选'
+      },
+      {
+        id:12,
+        contact:{name:'Chris Cao',initial:'C',role:'签到嘉宾',color:'#7DD3FC'},
+        text:'Robin认为AI初期在股市博弈中，用AI的人对不用AI的人会怎样？',
+        correctText:'完胜，就像深蓝击败人类象棋冠军',
+        distractors:['优势不大还需要运气','只是稍微提高效率','完全没有区别'],
+        explanation:'Robin认为在AI初始阶段的这几年，用AI进行股市投资博弈的人对不用AI的人，就像深蓝击败人类象棋冠军一样，是完胜的。100盘可能赢99盘。',
+        knowledge:'AI投资博弈'
+      }
+    ]
+  },
+  {
+    id:5, title:'AI音乐与学习方法', subtitle:'用AI实现创意梦想', icon:'🎵', badgeClass:'badge-m5',
+    questions:[
+      {
+        id:13,
+        contact:{name:'Isabella F',initial:'I',role:'签到嘉宾',color:'#FDE68A'},
+        text:'Robin用什么工具创作了歌颂WorkBuddy的歌曲？',
+        correctText:'Suno.ai',
+        distractors:['ChatGPT','腾讯龙虾','Google NotebookLM'],
+        explanation:'Robin用suno.ai这个免费的AI音乐创作网站，只输入了"I love WorkBuddy, he works for me"这样的简单描述，两分钟就生成了一首完整的歌曲。',
+        knowledge:'AI音乐创作'
+      },
+      {
+        id:14,
+        contact:{name:'Bella',initial:'B',role:'签到嘉宾',color:'#FCA5A5'},
+        text:'Robin总结的AI学习方式是什么？',
+        correctText:'输出式学习（学徒制）',
+        distractors:['输入式学习（听课为主）','自学式学习（看书为主）','灌输式学习（考试为主）'],
+        explanation:'Robin强调AI是完全的输出式学习，与传统输入式学习（老师讲、学生听）不同。他采用学徒制方法——老师做什么，学生学什么，不告诉你原因，而是通过实践来领悟。',
+        knowledge:'AI学习方法'
+      },
+      {
+        id:15,
+        contact:{name:'Ashley',initial:'A',role:'签到嘉宾',color:'#6EE7B7'},
+        text:'Robin用阿拉丁神灯比喻AI，他认为掌握AI需要哪两样东西？',
+        correctText:'AI思维和咒语（prompt）',
+        distractors:['编程技能和英语能力','数学基础和逻辑思维','硬件设备和网络连接'],
+        explanation:'Robin把AI比作阿拉丁神灯，掌握AI需要两点：一是AI思维（理解AI的工作方式和可能性），二是咒语（即prompt，与AI沟通的技巧）。有了这两样，就能让AI为你工作。',
+        knowledge:'AI思维与咒语'
+      }
+    ]
+  }
+];
+
+// ========== STATE ==========
+let currentQ = 0;
+let shuffledQuestions = [];
+let score = 0;
+let answers = [];
+let selectedOption = null;
+let answered = false;
+
+// ========== UTILS ==========
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildShuffledQuestion(q) {
+  const allOptions = [q.correctText, ...shuffleArray(q.distractors)];
+  const shuffled = shuffleArray(allOptions);
+  const correctIndex = shuffled.indexOf(q.correctText);
+  return { ...q, options: shuffled, answer: correctIndex };
+}
+
+// ========== QUIZ ==========
+function startQuiz() {
+  currentQ = 0;
+  score = 0;
+  answers = [];
+  selectedOption = null;
+  answered = false;
+
+  // Flatten & shuffle all questions with randomized options
+  shuffledQuestions = [];
+  modules.forEach(m => {
+    m.questions.forEach(q => {
+      shuffledQuestions.push({ ...buildShuffledQuestion(q), module: m });
+    });
+  });
+
+  showScreen('quizScreen');
+  renderQuestion();
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function renderQuestion() {
+  const q = shuffledQuestions[currentQ];
+  const m = q.module;
+  const bgClass = `snail-bg-${q.id}`;
+  selectedOption = null;
+  answered = false;
+
+  const progress = ((currentQ) / shuffledQuestions.length) * 100;
+
+  document.getElementById('quizArea').innerHTML = `
+    <div class="progress-bar-wrap">
+      <div class="progress-bar"><div class="progress-bar-fill" style="width:${progress}%"></div></div>
+    </div>
+    <div class="progress-info">
+      <span>第 ${currentQ + 1} / ${shuffledQuestions.length} 题</span>
+      <span>得分: ${score}</span>
+    </div>
+    <div class="question-area ${bgClass}">
+      <span class="module-badge ${m.badgeClass}">${m.icon} ${m.title}</span>
+      <div class="question-card">
+        <div class="contact-chip">
+          <div class="contact-avatar" style="background:${q.contact.color}">${q.contact.initial}</div>
+          <span class="contact-name">${q.contact.name} · ${q.contact.role}</span>
+        </div>
+        <div class="question-text">${q.text}</div>
+        <div class="options-grid" id="optionsGrid">
+          ${q.options.map((opt, i) => `
+            <button class="option-btn" data-index="${i}" onclick="selectOption(${i})">${opt}</button>
+          `).join('')}
+        </div>
+        <div class="explanation-card" id="explanationCard">
+          <div class="label">解析</div>
+          <div class="content">${q.explanation}</div>
+          <span class="knowledge-tag">${q.knowledge}</span>
+        </div>
+      </div>
+    </div>
+    <div class="next-btn-wrap">
+      <button class="btn-next" id="nextBtn" disabled onclick="nextQuestion()">
+        ${currentQ < shuffledQuestions.length - 1 ? '下一题' : '查看结果'}
+      </button>
+    </div>
+  `;
+}
+
+function selectOption(index) {
+  if (answered) return;
+  answered = true;
+  selectedOption = index;
+
+  const q = shuffledQuestions[currentQ];
+  const isCorrect = index === q.answer;
+  if (isCorrect) score++;
+
+  answers.push({ questionId: q.id, selected: index, correct: q.answer, isCorrect });
+
+  const btns = document.querySelectorAll('#optionsGrid .option-btn');
+  btns.forEach((btn, i) => {
+    btn.classList.add('disabled');
+    if (i === q.answer) btn.classList.add('correct');
+    if (i === index && !isCorrect) btn.classList.add('wrong');
+  });
+
+  document.getElementById('explanationCard').classList.add('show');
+  document.getElementById('nextBtn').disabled = false;
+}
+
+function nextQuestion() {
+  currentQ++;
+  if (currentQ >= shuffledQuestions.length) {
+    showResult();
+  } else {
+    renderQuestion();
+  }
+}
+
+function showResult() {
+  const total = shuffledQuestions.length;
+  const pct = Math.round((score / total) * 100);
+  const correct = score;
+  const wrong = total - score;
+
+  let grade = '';
+  let emoji = '';
+  if (pct >= 90) { grade = 'AI达人'; emoji = '🏆'; }
+  else if (pct >= 70) { grade = 'AI进阶者'; emoji = '🌟'; }
+  else if (pct >= 50) { grade = 'AI入门者'; emoji = '🌱'; }
+  else { grade = 'AI新手'; emoji = '🥚'; }
+
+  document.getElementById('resultCard').innerHTML = `
+    <h2>${emoji} ${grade}</h2>
+    <div class="result-score">${pct}%</div>
+    <div class="result-detail">
+      你答对了 ${correct} 道题，错误 ${wrong} 题<br>
+      ${pct >= 70 ? '你的AI知识掌握得不错！继续深入学习可以成为AI达人。' : '继续学习AI，你也能达到顿悟的时刻！'}
+    </div>
+    <div class="result-stats">
+      <div class="result-stat"><span class="num green">${correct}</span><span class="lbl">正确</span></div>
+      <div class="result-stat"><span class="num red">${wrong}</span><span class="lbl">错误</span></div>
+      <div class="result-stat"><span class="num" style="color:var(--accent-pink)">${total}</span><span class="lbl">总题</span></div>
+    </div>
+    <button class="btn-retry" onclick="startQuiz()">再来一次</button>
+  `;
+
+  showScreen('resultScreen');
+}
+</script>
+</body>
+</html>
